@@ -29,11 +29,12 @@ public class Panel_Inventario extends JPanel {
     private DefaultTableModel inventoryTableModel;
     private JButton registerButton;
     private JButton cancelButton;
+    private JButton historyButton;
     private JLabel categoria;
     private JLabel tipo;
     private JLabel producto;
     private JLabel cantidad;
-    
+
     public Panel_Inventario() {
         setLayout(new BorderLayout());
 
@@ -41,11 +42,11 @@ public class Panel_Inventario extends JPanel {
         JPanel registerPanel = new JPanel();
         registerPanel.setLayout(new GridBagLayout());
         registerPanel.setBorder(BorderFactory.createTitledBorder("Registrar Ingreso"));
-        
+
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
         gbc.anchor = GridBagConstraints.WEST;
-        
+
         categoria = new JLabel("Categoría:");
         gbc.gridx = 1;
         gbc.gridy = 0;
@@ -56,7 +57,7 @@ public class Panel_Inventario extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         categoryComboBox.setPreferredSize(new Dimension(150, 20));
         registerPanel.add(categoryComboBox, gbc);
-        
+
         tipo = new JLabel("Tipo:");
         gbc.gridx = 3;
         gbc.gridy = 0;
@@ -68,7 +69,7 @@ public class Panel_Inventario extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         typeComboBox.setPreferredSize(new Dimension(150, 20));
         registerPanel.add(typeComboBox, gbc);
-        
+
         producto = new JLabel("Talla-Producto:");
         gbc.gridx = 5;
         gbc.gridy = 0;
@@ -80,7 +81,7 @@ public class Panel_Inventario extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         productComboBox.setPreferredSize(new Dimension(150, 20));
         registerPanel.add(productComboBox, gbc);
-        
+
         cantidad = new JLabel("Cantidad:");
         gbc.gridx = 7;
         gbc.gridy = 0;
@@ -92,31 +93,33 @@ public class Panel_Inventario extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         quantityField.setPreferredSize(new Dimension(150, 20));
         registerPanel.add(quantityField, gbc);
-        
+
         addButton = new JButton("Añadir al Registro");
         gbc.gridx = 8;
         gbc.gridy = 1;
         gbc.fill = GridBagConstraints.NONE;
         registerPanel.add(addButton, gbc);
-        
+
         add(registerPanel, BorderLayout.NORTH);
 
         // Panel para el registro de inventario
         JPanel inventoryPanel = new JPanel();
         inventoryPanel.setLayout(new BorderLayout());
         inventoryPanel.setBorder(BorderFactory.createTitledBorder("Registro de Inventario"));
-        
+
         inventoryTableModel = new DefaultTableModel(new Object[]{"Categoría", "Tipo", "Producto", "Cantidad"}, 0);
         inventoryTable = new JTable(inventoryTableModel);
         inventoryPanel.add(new JScrollPane(inventoryTable), BorderLayout.CENTER);
-        
+
         add(inventoryPanel, BorderLayout.CENTER);
 
         JPanel bottomPanel = new JPanel();// Agregar el botón de registrar ingresos al final del panel
         registerButton = new JButton("Registrar Ingresos");
         bottomPanel.add(registerButton);
-        cancelButton=new JButton("Cancelar Ingreso");
+        cancelButton = new JButton("Cancelar Ingreso");
         bottomPanel.add(cancelButton);
+        historyButton = new JButton("Historial de Ingresos");
+        bottomPanel.add(historyButton);
         add(bottomPanel, BorderLayout.SOUTH);
         // Acción del botón de añadir al registro
         addButton.addActionListener(new ActionListener() {
@@ -133,12 +136,19 @@ public class Panel_Inventario extends JPanel {
                 registerAllInventory();
             }
         });
-        
-         // Acción del botón de cancelar ingresos
+
+        // Acción del botón de cancelar ingresos
         cancelButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 cancelSelectedRow();
+            }
+        });
+        // Acción del botón de historial de ingresos
+        historyButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showIncomeHistory();
             }
         });
 
@@ -149,17 +159,17 @@ public class Panel_Inventario extends JPanel {
                 updateTypeComboBox();
             }
         });
-        
+
         typeComboBox.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 updateProductComboBox();
             }
         });
-        
+
         loadCategories();
     }
-    
+
     private void loadCategories() {
         List<String> categories = new ArrayList<>();
         try (Connection connection = Conexion.getConnection()) {
@@ -174,7 +184,7 @@ public class Panel_Inventario extends JPanel {
         }
         categoryComboBox.setModel(new DefaultComboBoxModel<>(categories.toArray(new String[0])));
     }
-    
+
     private void updateTypeComboBox() {
         String selectedCategory = (String) categoryComboBox.getSelectedItem();
         if (selectedCategory != null) {
@@ -195,11 +205,11 @@ public class Panel_Inventario extends JPanel {
             typeComboBox.setModel(new DefaultComboBoxModel<>(types.toArray(new String[0])));
         }
     }
-    
+
     private void updateProductComboBox() {
         String selectedCategory = (String) categoryComboBox.getSelectedItem();
         String selectedType = (String) typeComboBox.getSelectedItem();
-        
+
         if (selectedCategory != null && selectedType != null) {
             List<String> products = new ArrayList<>();
             try (Connection connection = Conexion.getConnection()) {
@@ -212,11 +222,11 @@ public class Panel_Inventario extends JPanel {
                     // Para otras categorías y tipos, seleccionamos las tallas
                     sql = "SELECT talla FROM Productos WHERE id_tipo = (SELECT id_tipo FROM Tipos WHERE nombre = ? AND id_categoria = (SELECT id_categoria FROM Categoria WHERE nombre = ?))";
                 }
-                
+
                 try (PreparedStatement statement = connection.prepareStatement(sql)) {
                     statement.setString(1, selectedType);
                     statement.setString(2, selectedCategory);
-                    
+
                     try (ResultSet resultSet = statement.executeQuery()) {
                         while (resultSet.next()) {
                             // Si estamos seleccionando productos por nombre (para unisex y otros), obtenemos el nombre
@@ -237,11 +247,11 @@ public class Panel_Inventario extends JPanel {
             if (products.isEmpty() && "unisex".equalsIgnoreCase(selectedCategory) && "otros".equalsIgnoreCase(selectedType)) {
                 products.add("Unitalla");
             }
-            
+
             productComboBox.setModel(new DefaultComboBoxModel<>(products.toArray(new String[0])));
         }
     }
-    
+
     private void addToRegister() {
         String category = (String) categoryComboBox.getSelectedItem();
         String type = (String) typeComboBox.getSelectedItem();
@@ -253,7 +263,7 @@ public class Panel_Inventario extends JPanel {
             JOptionPane.showMessageDialog(this, "Todos los campos son obligatorios.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        
+
         int quantity;
         try {
             quantity = Integer.parseInt(quantityStr);
@@ -272,14 +282,14 @@ public class Panel_Inventario extends JPanel {
         typeComboBox.setSelectedIndex(0);
         categoryComboBox.setSelectedIndex(0);
     }
-    
+
     private void registerAllInventory() {
         int rows = inventoryTableModel.getRowCount();
         if (rows == 0) {
             JOptionPane.showMessageDialog(this, "No hay registros para ingresar.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        
+
         try (Connection connection = Conexion.getConnection()) {
             String sql = "INSERT INTO Ingresos (id_producto, id_usuario, cantidad, fecha_hora) VALUES (?, ?, ?, ?)";
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
@@ -288,12 +298,12 @@ public class Panel_Inventario extends JPanel {
                     String type = (String) inventoryTableModel.getValueAt(i, 1);
                     String product = (String) inventoryTableModel.getValueAt(i, 2);
                     int quantity = (int) inventoryTableModel.getValueAt(i, 3);
-                    
+
                     statement.setInt(1, getProductID(category, type, product)); // Debes implementar getProductID para obtener el ID del producto
                     statement.setInt(2, getUserID()); // Debes implementar getUserID para obtener el ID del usuario actual
                     statement.setInt(3, quantity);
                     statement.setTimestamp(4, new Timestamp(new java.util.Date().getTime()));
-                    
+
                     statement.addBatch();
                 }
                 statement.executeBatch();
@@ -301,14 +311,14 @@ public class Panel_Inventario extends JPanel {
 
             // Limpiar la tabla después de registrar los ingresos
             inventoryTableModel.setRowCount(0);
-            
+
             JOptionPane.showMessageDialog(this, "Ingresos registrados exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
         } catch (SQLException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(this, "Error al registrar los ingresos en la base de datos.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
-    
+
     private int getProductID(String category, String type, String product) {
         int productId = 0;
         try (Connection connection = Conexion.getConnection()) {
@@ -320,7 +330,7 @@ public class Panel_Inventario extends JPanel {
             } else {
                 sql = "SELECT id_producto FROM Productos WHERE talla = ? AND id_tipo = (SELECT id_tipo FROM Tipos WHERE nombre = ? AND id_categoria = (SELECT id_categoria FROM Categoria WHERE nombre = ?))";
             }
-            
+
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 if ("unisex".equalsIgnoreCase(category) && "otros".equalsIgnoreCase(type)) {
                     statement.setString(1, product);
@@ -331,7 +341,7 @@ public class Panel_Inventario extends JPanel {
                     statement.setString(2, type);
                     statement.setString(3, category);
                 }
-                
+
                 try (ResultSet resultSet = statement.executeQuery()) {
                     if (resultSet.next()) {
                         productId = resultSet.getInt("id_producto");
@@ -343,14 +353,14 @@ public class Panel_Inventario extends JPanel {
         }
         return productId;
     }
-    
+
     private int getUserID() {
         // Implementa la lógica para obtener el ID del usuario actual
         // Podrías almacenar el ID del usuario en una variable de sesión al iniciar sesión
         // Aquí se asume un valor fijo para simplificación
         return 1;
     }
-    
+
     private void cancelSelectedRow() {
         int selectedRow = inventoryTable.getSelectedRow();
         if (selectedRow != -1) {
@@ -358,5 +368,37 @@ public class Panel_Inventario extends JPanel {
         } else {
             JOptionPane.showMessageDialog(this, "Seleccione una fila para cancelar.", "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void showIncomeHistory() {
+        JFrame historyFrame = new JFrame("Historial de Ingresos");
+        historyFrame.setSize(600, 400);
+        historyFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        DefaultTableModel historyTableModel = new DefaultTableModel(new Object[]{"Producto", "Cantidad", "Fecha y Hora"}, 0);
+        JTable historyTable = new JTable(historyTableModel);
+        historyFrame.add(new JScrollPane(historyTable), BorderLayout.CENTER);
+
+        try (Connection connection = Conexion.getConnection()) {
+            String sql = "SELECT p.nombre, i.cantidad, i.fecha_hora "
+                    + "FROM Ingresos i "
+                    + "JOIN Productos p ON i.id_producto = p.id_producto "
+                    + "WHERE MONTH(i.fecha_hora) = MONTH(CURDATE()) AND YEAR(i.fecha_hora) = YEAR(CURDATE())";
+            try (Statement statement = connection.createStatement(); ResultSet resultSet = statement.executeQuery(sql)) {
+                while (resultSet.next()) {
+                    String productName = resultSet.getString("nombre");
+                    int quantity = resultSet.getInt("cantidad");
+                    Timestamp timestamp = resultSet.getTimestamp("fecha_hora");
+
+                    Object[] row = {productName, quantity, timestamp.toString()};
+                    historyTableModel.addRow(row);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error al cargar el historial de ingresos.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+
+        historyFrame.setVisible(true);
     }
 }

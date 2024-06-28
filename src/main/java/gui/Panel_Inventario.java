@@ -370,35 +370,72 @@ public class Panel_Inventario extends JPanel {
         }
     }
 
-    private void showIncomeHistory() {
-        JFrame historyFrame = new JFrame("Historial de Ingresos");
-        historyFrame.setSize(600, 400);
-        historyFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+   private void showIncomeHistory() {
+    JFrame historyFrame = new JFrame("Historial de Ingresos y Stock Actual");
+    historyFrame.setSize(800, 600);
+    historyFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+    historyFrame.setLayout(new GridLayout(2, 1));
 
-        DefaultTableModel historyTableModel = new DefaultTableModel(new Object[]{"Producto", "Cantidad", "Fecha y Hora"}, 0);
-        JTable historyTable = new JTable(historyTableModel);
-        historyFrame.add(new JScrollPane(historyTable), BorderLayout.CENTER);
+    // Panel del historial de ingresos
+    JPanel incomeHistoryPanel = new JPanel(new BorderLayout());
+    DefaultTableModel historyTableModel = new DefaultTableModel(new Object[]{"Producto", "Cantidad", "Fecha y Hora"}, 0);
+    JTable historyTable = new JTable(historyTableModel);
+    incomeHistoryPanel.add(new JScrollPane(historyTable), BorderLayout.CENTER);
+    historyFrame.add(incomeHistoryPanel);
 
-        try (Connection connection = Conexion.getConnection()) {
-            String sql = "SELECT p.nombre, i.cantidad, i.fecha_hora "
-                    + "FROM Ingresos i "
-                    + "JOIN Productos p ON i.id_producto = p.id_producto "
-                    + "WHERE MONTH(i.fecha_hora) = MONTH(CURDATE()) AND YEAR(i.fecha_hora) = YEAR(CURDATE())";
-            try (Statement statement = connection.createStatement(); ResultSet resultSet = statement.executeQuery(sql)) {
-                while (resultSet.next()) {
-                    String productName = resultSet.getString("nombre");
-                    int quantity = resultSet.getInt("cantidad");
-                    Timestamp timestamp = resultSet.getTimestamp("fecha_hora");
+    // Panel del stock actual
+    JPanel stockPanel = new JPanel(new BorderLayout());
+    DefaultTableModel stockTableModel = new DefaultTableModel(new Object[]{"ID Producto", "Nombre", "Descripción", "Cantidad Total"}, 0);
+    JTable stockTable = new JTable(stockTableModel);
+    stockPanel.add(new JScrollPane(stockTable), BorderLayout.CENTER);
+    historyFrame.add(stockPanel);
 
-                    Object[] row = {productName, quantity, timestamp.toString()};
-                    historyTableModel.addRow(row);
-                }
+    // Cargar el historial de ingresos
+    try (Connection connection = Conexion.getConnection()) {
+        String sql = "SELECT p.nombre, i.cantidad, i.fecha_hora " +
+                     "FROM Ingresos i " +
+                     "JOIN Productos p ON i.id_producto = p.id_producto " +
+                     "WHERE MONTH(i.fecha_hora) = MONTH(CURDATE()) AND YEAR(i.fecha_hora) = YEAR(CURDATE())";
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            while (resultSet.next()) {
+                String productName = resultSet.getString("nombre");
+                int quantity = resultSet.getInt("cantidad");
+                Timestamp timestamp = resultSet.getTimestamp("fecha_hora");
+
+                Object[] row = {productName, quantity, timestamp.toString()};
+                historyTableModel.addRow(row);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Error al cargar el historial de ingresos.", "Error", JOptionPane.ERROR_MESSAGE);
         }
-
-        historyFrame.setVisible(true);
+    } catch (SQLException e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Error al cargar el historial de ingresos.", "Error", JOptionPane.ERROR_MESSAGE);
     }
+
+    // Cargar el stock actual
+    try (Connection connection = Conexion.getConnection()) {
+        String sql = "SELECT p.id_producto, p.nombre, p.descripcion, inv.cantidad " +
+                     "FROM Inventario inv " +
+                     "JOIN Productos p ON inv.id_producto = p.id_producto";
+        try (Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            while (resultSet.next()) {
+                int productId = resultSet.getInt("id_producto");
+                String productName = resultSet.getString("nombre");
+                String description = resultSet.getString("descripcion");
+                int totalQuantity = resultSet.getInt("cantidad");
+
+                Object[] row = {productId, productName, description, totalQuantity};
+                stockTableModel.addRow(row);
+            }
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Error al cargar el stock actual.", "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    historyFrame.setVisible(true);
 }
+
+}
+

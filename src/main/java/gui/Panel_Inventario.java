@@ -115,7 +115,7 @@ public class Panel_Inventario extends JPanel {
         inventoryPanel.setLayout(new BorderLayout());
         inventoryPanel.setBorder(BorderFactory.createTitledBorder("Registro de Inventario"));
 
-        inventoryTableModel = new DefaultTableModel(new Object[]{"Categoría", "Tipo", "Producto", "Cantidad"}, 0);
+        inventoryTableModel = new DefaultTableModel(new Object[]{"Categoría", "Tipo", "Talla-Producto", "Cantidad"}, 0);
         inventoryTable = new JTable(inventoryTableModel);
         inventoryPanel.add(new JScrollPane(inventoryTable), BorderLayout.CENTER);
 
@@ -123,8 +123,10 @@ public class Panel_Inventario extends JPanel {
 
         JPanel bottomPanel = new JPanel();// Agregar el botón de registrar ingresos al final del panel
         registerButton = new JButton("Registrar Ingresos");
+        registerButton.setBackground(Color.GREEN);
         bottomPanel.add(registerButton);
         cancelButton = new JButton("Cancelar Ingreso");
+        cancelButton.setBackground(Color.red);
         bottomPanel.add(cancelButton);
         historyButton = new JButton("Historial de Ingresos");
         bottomPanel.add(historyButton);
@@ -283,6 +285,7 @@ public class Panel_Inventario extends JPanel {
         // Añadir registro a la tabla de inventario
         Object[] newRow = {category, type, product, quantity};
         inventoryTableModel.addRow(newRow);
+        
 
         // Limpiar campos
         quantityField.setText("");

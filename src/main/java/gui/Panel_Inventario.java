@@ -8,6 +8,12 @@
  */
 package gui;
 
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.property.UnitValue;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
@@ -17,6 +23,8 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import database.Conexion;
+import java.io.File;
+import java.io.IOException;
 
 public class Panel_Inventario extends JPanel {
 
@@ -303,6 +311,7 @@ public class Panel_Inventario extends JPanel {
                     statement.setInt(2, getUserID()); // Debes implementar getUserID para obtener el ID del usuario actual
                     statement.setInt(3, quantity);
                     statement.setTimestamp(4, new Timestamp(new java.util.Date().getTime()));
+                    
 
                     statement.addBatch();
                 }
@@ -374,21 +383,44 @@ public class Panel_Inventario extends JPanel {
     JFrame historyFrame = new JFrame("Historial de Ingresos y Stock Actual");
     historyFrame.setSize(800, 600);
     historyFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-    historyFrame.setLayout(new GridLayout(2, 1));
+    historyFrame.setLayout(new BorderLayout());
+
+    JPanel contentPanel = new JPanel(new GridLayout(2, 1));
 
     // Panel del historial de ingresos
     JPanel incomeHistoryPanel = new JPanel(new BorderLayout());
     DefaultTableModel historyTableModel = new DefaultTableModel(new Object[]{"Producto", "Cantidad", "Fecha y Hora"}, 0);
     JTable historyTable = new JTable(historyTableModel);
     incomeHistoryPanel.add(new JScrollPane(historyTable), BorderLayout.CENTER);
-    historyFrame.add(incomeHistoryPanel);
+    contentPanel.add(incomeHistoryPanel);
 
     // Panel del stock actual
     JPanel stockPanel = new JPanel(new BorderLayout());
     DefaultTableModel stockTableModel = new DefaultTableModel(new Object[]{"ID Producto", "Nombre", "Descripción", "Cantidad Total"}, 0);
     JTable stockTable = new JTable(stockTableModel);
     stockPanel.add(new JScrollPane(stockTable), BorderLayout.CENTER);
-    historyFrame.add(stockPanel);
+    contentPanel.add(stockPanel);
+
+    historyFrame.add(contentPanel, BorderLayout.CENTER);
+
+    // Botón para exportar a PDF
+    JPanel buttonPanel = new JPanel();
+    JButton exportButton = new JButton("Exportar a PDF");
+    buttonPanel.add(exportButton);
+    historyFrame.add(buttonPanel, BorderLayout.SOUTH);
+
+    // Acción del botón de exportación
+    exportButton.addActionListener(new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            try {
+                exportToPDF(historyTableModel, stockTableModel);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(historyFrame, "Error al exportar a PDF.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    });
 
     // Cargar el historial de ingresos
     try (Connection connection = Conexion.getConnection()) {
@@ -437,5 +469,45 @@ public class Panel_Inventario extends JPanel {
     historyFrame.setVisible(true);
 }
 
+private void exportToPDF(DefaultTableModel historyTableModel, DefaultTableModel stockTableModel) throws IOException {
+    JFileChooser fileChooser = new JFileChooser();
+    fileChooser.setDialogTitle("Guardar PDF");
+    int userSelection = fileChooser.showSaveDialog(null);
+    if (userSelection == JFileChooser.APPROVE_OPTION) {
+        File fileToSave = fileChooser.getSelectedFile();
+
+        PdfWriter writer = new PdfWriter(fileToSave.getAbsolutePath() + ".pdf");
+        PdfDocument pdfDoc = new PdfDocument(writer);
+        Document document = new Document(pdfDoc);
+
+        document.add(new Paragraph("Historial de Ingresos del Mes Actual").setBold().setFontSize(18));
+        addTableToDocument(historyTableModel, document);
+
+        document.add(new Paragraph("\n\nStock Actual").setBold().setFontSize(18));
+        addTableToDocument(stockTableModel, document);
+
+        document.close();
+    }
+}
+
+private void addTableToDocument(DefaultTableModel tableModel, Document document) {
+    int numCols = tableModel.getColumnCount();
+    Table table = new Table(UnitValue.createPercentArray(numCols)).useAllAvailableWidth();
+
+    // Agregar encabezados de columna
+    for (int col = 0; col < numCols; col++) {
+        table.addHeaderCell(new Paragraph(tableModel.getColumnName(col)).setBold());
+    }
+
+    // Agregar filas de datos
+    int numRows = tableModel.getRowCount();
+    for (int row = 0; row < numRows; row++) {
+        for (int col = 0; col < numCols; col++) {
+            table.addCell(new Paragraph(tableModel.getValueAt(row, col).toString()));
+        }
+    }
+
+    document.add(table);
+}
 }
 
